@@ -1,0 +1,11 @@
+# LLM-based Intent-Based Networking Simulator
+# Required Python packages
+
+# Network graph creation and visualization
+networkx>=2.6.0
+
+# Plotting and visualization
+matplotlib>=3.5.0
+
+# Optional: for real LLM parsing (set OPENAI_API_KEY and run with --llm)
+openai>=1.0.0
