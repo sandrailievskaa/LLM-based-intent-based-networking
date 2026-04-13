@@ -2,6 +2,8 @@
 
 A small Python simulator that maps natural-language network intents to allow/block rules on a simple topology. It runs locally without Mininet or Ryu, so you can show intent → flow table → connectivity in a few commands.
 
+This is an academic coursework / research-style project (proof-of-concept for a paper or lab report), not production network software.
+
 ## Tech stack
 
 - Python 3
