@@ -1,75 +1,50 @@
-# LLM-based Intent-Based Networking — симулационен прототип
+# LLM Intent-Based Networking Simulator
 
-**„LLM-based Intent-Based Networking using Mininet and an SDN controller“**. Наместо вистинска Mininet околина и SDN контролер (на пр. Ryu), направена е **Python симулација** која го задржува истиот концепт: операторот дава намера на природен јазик, системот ја преведува во мрежни правила и ги применува на мрежата. Топологијата е поедноставена (3 хоста, 1 switch), а парсирањето на intent е направено со pattern matching, со можност за поврзување кон вистински LLM (OpenAI) ако е потребно.
+A small Python simulator that maps natural-language network intents to allow/block rules on a simple topology. It runs locally without Mininet or Ryu, so you can show intent → flow table → connectivity in a few commands.
 
-Во вистински intent-based SDN со Mininet и контролер би имале: природнојазични наредби (Northbound API), SDN контролер кој преку LLM или друг модул ги претвора во flow правила, и OpenFlow/Southbound комуникација со прекинувачите. Овде тоа е симулирано на следниов начин:
+## Tech stack
 
-- **Intent input (Northbound):** корисникот внесува реченици како „Block h1 from accessing h3“ или „Allow h2 to h3“.
-- **Контролер:** класата `IntentBasedNetworkController` го координира парсирањето (преку `IntentParser`) и примената на правилата. Парсерот по дифолт користи regex шеми за да извлече action (allow/block), изворен и дестинационен хост — со тоа се симулира улогата на LLM. Опционално може да се поврзе и вистински OpenAI модел.
-- **Мрежа и enforcement (Southbound):** `NetworkSimulator` одржува „flow табела“ (список на правила за паровите src→dst) и при симулиран ping одлучува дали да дозволи или да блокира — како поедноставена симулација на тоа што би го правел switch-от со OpenFlow правила.
+- Python 3
+- NetworkX (topology graph)
+- Matplotlib (topology view)
+- OpenAI Python SDK (optional; for LLM-backed parsing)
 
-Со тоа проектот ги покрива трите слоја од intent-based SDN (intent → controller → data plane), само со симулирана мрежа наместо Mininet и симулирано парсирање наместо задолжително вистински LLM.
+## Key features
 
+- Three hosts (`h1`, `h2`, `h3`) on one switch; simulated `ping` respects directed flow rules
+- Natural-language intents such as “Block h1 from accessing h3” or “Allow h2 to h3”
+- Interactive REPL: `ping`, `status`, `clear`, `show`, `quit`
+- One-shot demo mode for quick runs and demos
 
-## Што е опфатено во имплементацијата
+## Highlights
 
-- Внес на intent на англиски (различни формулации за block/allow помеѓу h1, h2, h3).
-- Превод на intent во JSON flow правило (action, src, dst) и валидација на хостовите.
-- Складирање и примена на правилата во симулирана мрежа; симулиран ping покажува SUCCESS или BLOCKED зависно од правилата.
-- Визуелизација на топологијата (3 хоста + 1 switch) и листа на активни flow правила (matplotlib).
-- Приказ на „flow табела“ во стил на Southbound (match: src→dst, action: FORWARD/DROP) и историја на обработите intent-и (Northbound).
-- Опционална интеграција со OpenAI за парсирање на intent (со флаг `--llm` и поставен `OPENAI_API_KEY`); без тоа сè работи само со regex.
+- **SDN-style split:** northbound intents → controller → southbound flow table → data-plane checks
+- **Two parsers:** regex patterns by default; if `OPENAI_API_KEY` is set and you pass `--llm`, the same pipeline can use `gpt-4o-mini` with JSON-shaped output
+- **Directed rules:** a block on `h2 → h1` does not imply `h1 → h2`
+- **Topology plot:** `show` draws the star topology and lists active rules
 
-Топологијата е star: еден централен switch (s1), три хоста (h1, h2, h3) поврзани со него. Со ова се добива истата идеја како минимална Mininet топологија, без да се инсталира Mininet или контролер.
-
-
-## Инсталација 
-
-Потребен е Python 3.7 или понов и pip. Клонирај или отвори ја папката на проектот, по можност активирај виртуелна средина (на Windows PowerShell: `.\venv\Scripts\Activate.ps1`), па инсталирај зависности:
+## Setup
 
 ```bash
+python -m venv venv
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Инсталирани се `networkx` и `matplotlib` за графот и цртањето; `openai` е опционален и служи само ако сакаш да користиш вистински LLM.
+**Run**
 
-**Два начина за стартување:**
-
-1. **Демо** — со една команда се прикажува почетна состојба, се применуваат три примерни intent-и (block h1→h3, allow h2→h3, allow h1→h2), се тестира конективноста со ping пред и по правилата, и се отвора прозорец со топологијата и активните flow правила. Добро за брза проверка и за приказ на професорката.
-
-   ```bash
-   python intent_simulator.py --demo
-   ```
-
-2. **Интерактивен режим** — отвора се сесија во која внесуваш intent-и и команди (ping, status, show, clear, help, quit). Корисно за тестирање на различни реченици и за да видиш како се гради flow табелата.
-
-   ```bash
-   python intent_simulator.py
-   ```
-
-Во интерактивниот режим: внесуваш intent (на пр. `Block h1 from accessing h3`), потоа `ping` за да видиш кои парови се блокирани, `status` за flow табелата и историјата на intent-и, `show` за цртежот на топологијата, `clear` за бришење на правила, `help` за примери, `quit` или `exit` за излез.
-
----
-
-## Опционално: парсирање со OpenAI (LLM)
-
-Парсерот по дифолт користи само regex; проектот работи целосно без платен API. 
-
----
-
-## Топологија и примерни intent-и
-
-Мрежата изгледа вака (star):
-
-```
-        [h1]          [h2]
-          \            /
-           \          /
-            \        /
-             [s1]
-              |
-            [h3]
+```bash
+python intent_simulator.py --demo
 ```
 
-Пример реченици за блокирање: `Block h1 from accessing h3`, `Deny h2 access to h1`, `Prevent h3 from reaching h2`, `Isolate h1 from h3`. За дозвола: `Allow h2 to h3`, `Permit h3 to access h1`, `Enable connection from h1 to h3`. Командите во интерактивниот режим се: внес на intent (како горенаведено), `ping`, `ping h1 h3`, `show`, `status`, `clear`, `help`, `quit`/`exit`.
+Interactive session:
 
+```bash
+python intent_simulator.py
+```
+
+Optional LLM parsing (requires API key in the environment):
+
+```bash
+python intent_simulator.py --llm
+```
